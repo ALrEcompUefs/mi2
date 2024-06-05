@@ -509,7 +509,9 @@ class analisador_sintatico:
                 case _:
                     pass
     #----------------------------------------------------------------------------------------------------
-   
+    #função que analisa formação da formação do uso de um identificador,vetor,registro ou chamada defunção
+    def funcao_formacao_ideVeRe_chamada(self):
+        pass
    #--------------------------------------------------------------------------------------------------
     '''
     |   Funções relacionadas a produções de expressões
@@ -540,6 +542,9 @@ class analisador_sintatico:
                 case 1:
                     if(self.current_token.token == '||' or self.current_token.token == '&&'):
                         current_state=2
+                        self.get_next_token()
+                    elif(self.current_token.token ==')'):
+                        current_state=4
                         self.get_next_token()
                 #estado após receber !,&& ou ||
                 case 2:
