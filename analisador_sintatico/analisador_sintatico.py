@@ -510,7 +510,72 @@ class analisador_sintatico:
                     pass
     #----------------------------------------------------------------------------------------------------
    
+   #--------------------------------------------------------------------------------------------------
+    '''
+    |   Funções relacionadas a produções de expressões
+    |   númericas, relacionais , aritimeticas
+    |
+    '''
    
+    def funcao_formacao_expressao_booleana(self):
+        current_state = 0
+        #variavel que define o fim da estrutura em produção
+        fim_producao = False
+        # devido a recursão da função boolena não a elminação do primeiro token de formação
+
+        while(self.current_token != None and not fim_producao):
+            match(current_state):
+                # Estado inicial
+                case 0:
+                    if(self.current_token.token =='verdadeiro' or self.current_token.token =='falso' or self.current_token.code =='IDE'):
+                        current_state=1
+                        self.get_next_token()
+                    elif(self.current_token.token == '||' or self.current_token.token == '&&'):
+                        current_state=2
+                        self.get_next_token()
+                    elif(self.current_token.token == '!'):
+                        current_state=2
+                        self.get_next_token()
+                # Estado após receber um identificador ou valor booleano
+                case 1:
+                    if(self.current_token.token == '||' or self.current_token.token == '&&'):
+                        current_state=2
+                        self.get_next_token()
+                #estado após receber !,&& ou ||
+                case 2:
+                    if(self.current_token.token =='verdadeiro' or self.current_token.token =='falso' or self.current_token.code =='IDE'):
+                        current_state=3
+                        self.get_next_token()
+                    elif(self.current_token.token == '('):
+                        # com a abertura de parenteses uma nova expressão booleana é formada
+                        # consome o token atual e passa para o estado inicial
+                        current_state=0
+                        self.get_next_token()
+                case 3:
+                    if(self.current_token.token ==';'):
+                        #chegou ao fim da expressão
+                        current_state=5
+                        self.get_next_token()
+                    elif(self.current_token.token == ')'):
+                        # fechamento de paranteses leva a duas opções
+                        current_state=4
+                        self.get_next_token()
+                    elif(self.current_token.token == '||'or self.current_token.token == '&&'):
+                        #volta para o inicio sem consumir o token
+                        current_state=0
+                case 4:
+                    if(self.current_token.token == ';'):
+                        current_state=5
+                        self.get_next_token()
+                    # se a expressão não é encerrada então só pode ser seguida por
+                    # | ou &
+                    elif(self.current_token.token == '||'or self.current_token.token == '&&'):
+                        #volta para o estado inicial sem consumir o token
+                        current_state=0
+                case 5:
+                    fim_producao=True
+                case _:
+                    pass
    # método executa a analise da formação da sintaxe do programa
     def proxima_producao(self):
         self.get_next_token()
@@ -522,4 +587,7 @@ a = analisador_sintatico()
 
 a.token_list= a.read_tokens()
 #print(a.token_list,'\n\n')
-a.proxima_producao()
+#a.proxima_producao()
+a.get_next_token()
+while(a.current_token !=None):
+    a.funcao_formacao_expressao_booleana()
