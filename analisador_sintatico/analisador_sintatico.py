@@ -476,7 +476,7 @@ class analisador_sintatico:
                 case _:
                     pass
     #-------------------------------------------------------------------------------------------------------
-    # função que anaçisa formação da listagem de parametros de uma função
+    # função que analisa formação da listagem de parametros de uma função
     def funcao_listagem_parametros(self):
         current_state = 0
         #variavel que define o fim da estrutura em produção
@@ -509,9 +509,92 @@ class analisador_sintatico:
                 case _:
                     pass
     #----------------------------------------------------------------------------------------------------
+
+    # funcão que analisa a formação de declaração de parametros de uma função
+    def funcao_listagem_parametros_chamada(self):
+        current_state = 0
+        #variavel que define o fim da estrutura em produção
+        fim_producao = False
+        # atualiza para o proximo token, elimina '('
+        self.get_next_token()
+
+        while(self.current_token != None and not fim_producao):
+            match(current_state):
+                case 0:
+                    # no caso 0 inicia com uma expressão geral
+                    self.funcao_formacao_expressao_geral()
+                    current_state=1
+                case 1:
+                    if(self.current_token == ')'):
+                        #finaliza chamada
+                        current_state=2
+                    elif(self.current_token.token == ','):
+                        self.get_next_token()
+                        current_state=0
+                case 2:
+                    fim_producao=True
+                case _:
+                    pass    
     #função que analisa formação da formação do uso de um identificador,vetor,registro ou chamada defunção
     def funcao_formacao_ideVeRe_chamada(self):
-        pass
+        count = 0
+        current_state = 0
+        #variavel que define o fim da estrutura em produção
+        fim_producao = False
+        # atualiza para o proximo token, elimina 'IDE'
+        self.get_next_token()
+
+        while(self.current_token != None and not fim_producao):
+            match(current_state):
+                case 0:
+                    if(self.current_token.token == '['):
+                        current_state=1
+                        self.get_next_token()
+                    elif(self.current_token.token =='.'):
+                        current_state=2
+                        self.get_next_token()
+                    elif(self.current_token == '('):
+                        current_state=3
+                    else:
+                        current_state=7
+                case 1:
+                    # como é esperada uma expressão númerica
+                    # faz a chamada para expressão númerica
+                    self.funcao_formacao_expressao_numerica()
+                    current_state=4
+                case 2:
+                    if(self.current_token.code == 'IDE'):
+                        #finalizou a produção
+                        self.get_next_token()
+                        #retorna para o estado inicial
+                        current_state= 6
+                case 3:
+                    #chama leitura de parametros de função
+                    self.funcao_listagem_parametros_chamada()
+                    current_state=5
+                case 4:
+                    if(self.current_token.token == ']'):
+                        #finalizou a produção
+                        self.get_next_token()
+                        #volta para o inicio
+                        current_state=6
+                case 5:
+                    if(self.current_token.token == ')'):
+                        #finalizou a produção
+                        self.get_next_token()
+                        #volta para o inicio
+                        current_state=6
+                case 6:
+                    if(self.current_token.token == '[' or self.current_token.token == '.' or self.current_token.token == ')'):
+                        current_state=0
+                    else:
+                        current_state=7
+                case 7:
+                    fim_producao= True
+                case _:
+                    pass
+        
+    
    #--------------------------------------------------------------------------------------------------
     '''
     |   Funções relacionadas a produções de expressões
@@ -581,18 +664,194 @@ class analisador_sintatico:
                     fim_producao=True
                 case _:
                     pass
+    # expressão númerica
+    def funcao_formacao_expressao_numerica(self):
+        current_state = 0
+        #variavel que define o fim da estrutura em produção
+        fim_producao = False
+        # devido a recursão da expressão não há elminação do primeiro token de formação
+
+        while(self.current_token != None and not fim_producao):
+            match(current_state):
+                case 0:
+                    if(self.current_token.token == '+' or self.current_token.token == '-'):
+                        self.get_next_token()
+                        current_state=1
+                    elif(self.current_token.token == '*' or self.current_token.token == '/'):
+                        self.get_next_token()
+                        current_state =1
+                    elif(self.current_token.token =='('):
+                        # após um abre parenteses espera uma expressao numerica
+                        # faz a chamada recursiva para a função
+                        #self.funcao_formacao_expressao_numerica() 
+                        current_state=1
+                    elif(self.current_token.code == 'IDE'):
+                        self.funcao_formacao_ideVeRe_chamada()
+                        current_state=2
+                    elif(self.current_token.code == 'NRO'):
+                        self.get_next_token()
+                        current_state=2
+                    else:
+                        current_state=3
+                case 1:
+                    # após um operador exige obrigatoriamente um numero,IDE ou (
+                    if(self.current_token.code == 'NRO'):
+                        self.get_next_token()
+                        current_state=2
+                    elif(self.current_token.code == 'IDE'):
+                        self.funcao_formacao_ideVeRe_chamada()
+                        current_state=2
+                    elif(self.current_token.token == '('):
+                        # após um abre parenteses espera uma expressao numerica
+                        # faz a chamada recursiva para a função
+                        # self.funcao_formacao_expressao_numerica() 
+                        self.get_next_token()
+                        current_state=0
+                case 2:
+                    # após um número,ide ou ) exige ser um operador,) ou fim da expressão
+                    if(self.current_token.token =='+' or self.current_token.token =='-'):
+                        self.get_next_token()
+                        current_state=1
+                    elif(self.current_token.token =='*' or self.current_token.token =='/'):
+                        self.get_next_token()
+                        current_state=1
+                    elif(self.current_token.token ==')'):
+                        self.get_next_token()
+                        # mantem no mesmo estado
+                    elif(self.current_token.token == ';'):
+                        self.get_next_token()
+                        current_state=3
+                    else:
+                        current_state=3
+                case 3:
+                    fim_producao= True
+                case _:
+                    pass
+
+    # a bendita expressão geral
+    def funcao_formacao_expressao_geral(self):
+        current_state = 0
+        #variavel que define o fim da estrutura em produção
+        fim_producao = False
+        # devido a recursão da expressão geral não há elminação do primeiro token de formação
+
+        while(self.current_token != None and not fim_producao):
+            match(current_state):
+                # estado inicial da expressão geral
+                case 0:
+                    # corrirgir esse trecho depois
+                    # pode ser otimizado
+                    if(self.current_token.token == 'verdadeiro' or self.current_token.token == 'falso'):
+                        self.get_next_token()
+                        current_state = 4
+                    elif(self.current_token.code == 'NRO' or self.current_token.code == 'CAC'):
+                        self.get_next_token()
+                        current_state = 4
+                    elif(self.current_token.code == 'IDE'):
+                        current_state=1
+                    elif(self.current_token.token == '!'):
+                        self.funcao_formacao_expressao_booleana()
+                        current_state = 6
+                    elif(self.current_token.token == '('):
+                        self.get_next_token()
+                        current_state=2
+                case 1:
+                    # chama a função referente para essa produção
+                    self.funcao_formacao_ideVeRe_chamada()
+                    current_state=4
+                case 2:
+                    # é uma expressão geral entre parenteses
+                    # deve ser feita a chamada a função e depois retorno para esse estado
+                    # para que o fecha parenteses possa ser considerado
+                    self.funcao_formacao_expressao_geral()
+                    current_state=3
+                case 3:
+                    # após receber uma expressão geral
+                    # agora precisa ser o fecha parenteses
+                    if(self.current_token.token == ')'):
+                        self.get_next_token()
+                        current_state=4
+                case 4:
+                    # Esse é o estado E0 do automato
+                    #todas transições possivéis são listadas
+                    #todas as opções possivéis a partir do estado 3
+                    if(self.current_token.token=='*' or self.current_token.token == '/'):
+                        # chama a função para produção de expressão númerica
+                        self.funcao_formacao_expressao_numerica()
+                        current_state=5
+                    elif(self.current_token.token=='+' or self.current_token.token == '-'):
+                        # chama a função para produção de expressão númerica
+                        self.funcao_formacao_expressao_numerica()
+                        current_state=5
+                    elif(self.current_token.token in ['>','<','>=','<=','==','!=']):
+                        self.get_next_token()
+                        current_state=0
+                    elif(self.current_token.token == '&&'):
+                        self.get_next_token()
+                        current_state = 0
+                    elif(self.current_token.token == '||'):
+                        self.get_next_token()
+                        current_state = 0
+                    else:
+                        # este else inviabiliza o tratamento de erro em expressões gerais
+                        # por enquanto é a opção para finalizar uma expressão geral
+                        current_state=11
+                case 5:
+                    if(self.current_token.token in ['>','<','>=','<=','==','!=']):
+                        # consumindo o operador
+                        self.get_next_token()
+                        #volta para o estado inicial
+                        current_state=0
+                    elif(self.current_token.token == '&&'):
+                        # consumindo o operador
+                        self.get_next_token()
+                        #volta para o estado inicial
+                        current_state = 0
+                    elif(self.current_token.token == '||'):
+                        # consumindo o operador
+                        self.get_next_token()
+                        #volta para o estado inicial
+                        current_state = 0
+                    else:
+                        # este else inviabiliza o tratamento de erro em expressões gerais
+                        # por enquanto é a opção para finalizar uma expressão geral
+                        current_state=11
+                case 6:
+                    if(self.current_token.token in ['>','<','>=','<=','==','!=']):
+                        self.get_next_token()
+                        current_state=0
+                    elif(self.current_token.token == '&&'):
+                        self.get_next_token()
+                        current_state = 0
+                    elif(self.current_token.token == '||'):
+                        self.get_next_token()
+                        current_state = 0
+                    else:
+                        # este else inviabiliza o tratamento de erro em expressões gerais
+                        # por enquanto é a opção para finalizar uma expressão geral
+                        current_state=11
+                case 7:
+                    pass
+                case 11:
+                    fim_producao= True
+                    print('cabou')
+                case _:
+                    pass
    # método executa a analise da formação da sintaxe do programa
     def proxima_producao(self):
         self.get_next_token()
 
         if( self.current_token.token == 'ALGORITMO'):
             self.funcao_algortimo()
-
+    
+    
 a = analisador_sintatico()
 
 a.token_list= a.read_tokens()
 #print(a.token_list,'\n\n')
 #a.proxima_producao()
 a.get_next_token()
+
+
 while(a.current_token !=None):
-    a.funcao_formacao_expressao_booleana()
+    a.funcao_formacao_expressao_geral()
