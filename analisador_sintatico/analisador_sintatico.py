@@ -145,9 +145,11 @@ class analisador_sintatico:
                             current_state='fim'
                 case 4: #verifica as opções de formação possivéis após declaração de funções
                     if(self.current_token.token == 'funcao'):
+                        print('nova funcao')
                         self.funcao_listagem_funcoes()
                         current_state=4
                     elif(self.current_token.token == 'principal'):
+                        print('funcao_principal')
                         self.funcao_principal()
                         current_state=5
                     elif(self.current_token.token == '}'):
@@ -178,10 +180,10 @@ class analisador_sintatico:
                             current_state = 2
                         case 'retorno':
                             self.funcao_retorno()
-                            current_state = 4
+                            current_state = 5
                         case _:
                             # como um bloco pode iniciar com varias opções
-                            # o caso default passa para o estado de fomrção do bloco
+                            # o caso default passa para o estado de formação do bloco
                             current_state=3
                 case 1:
                     # após formação de um bloco de constantes
@@ -191,7 +193,7 @@ class analisador_sintatico:
                             current_state = 2
                         case 'retorno':
                             self.funcao_retorno()
-                            current_state = 4
+                            current_state = 5
                         case _:
                             # como um bloco pode iniciar com varias opções
                             # o caso default passa para o estado de fomrção do bloco
@@ -201,7 +203,7 @@ class analisador_sintatico:
                     match(self.current_token.token):
                         case 'retorno':
                             self.funcao_retorno()
-                            current_state = 4
+                            current_state = 5
                         case _:
                             # como um bloco pode iniciar com varias opções
                             # o caso default passa para o estado de fomrção do bloco
@@ -343,10 +345,20 @@ class analisador_sintatico:
                         current_state=4
                         self.get_next_token()
                 case 4:
+                    # após { espera um escopo ou um }
                     if(self.current_token.token == '}'):
-                        current_state=5
+                        current_state=6
                         self.get_next_token()
+                    else:
+                        self.funcao_escopo()
+                        current_state=5
                 case 5:
+                    if(self.current_token.token == '}'):
+                        current_state=6
+                        self.get_next_token()
+                        print('fechei parenteses a funcao')
+                case 6:
+                    print('finalizei a funcao')
                     fim_producao=True
                 case _:
                     pass
@@ -763,7 +775,7 @@ class analisador_sintatico:
                         current_state=2
                         self.get_next_token()
                 case 2:
-                    fim_producao
+                    fim_producao= True
                 case _:
                     pass
     
@@ -795,13 +807,16 @@ class analisador_sintatico:
                             # um retorno é o fim para um bloco
                             # vai para o estado final
                             current_state=2
+                        case '}':
+                            # um retorno é o fim para um bloco
+                            # vai para o estado final
+                            current_state=2
                         case _:
                             if(self.current_token.code =='IDE'):
-                                #vai para o estado de reatribuuição
+                                self.funcao_reatribuicao()
                                 current_state=1
                 case 1:
                     #chama a função de reatribuição
-                    self.funcao_reatribuicao()
                     current_state=0
                 case 2:
                     fim_producao= True
@@ -971,7 +986,6 @@ class analisador_sintatico:
                         current_state = 4
                     elif(self.current_token.code == 'NRO' or self.current_token.code == 'CAC'):
                         self.get_next_token()
-                        print('passei aqui')
                         current_state = 4
                     elif(self.current_token.code == 'IDE'):
                         self.get_next_token()
@@ -991,14 +1005,12 @@ class analisador_sintatico:
                     # deve ser feita a chamada a função e depois retorno para esse estado
                     # para que o fecha parenteses possa ser considerado
                     self.funcao_formacao_expressao_geral()
-                    print('recebi o retorno')
                     current_state=3
                 case 3:
                     # após receber uma expressão geral
                     # agora precisa ser o fecha parenteses
                     if(self.current_token.token == ')'):
                         self.get_next_token()
-                        print('estou passando o token',self.current_token.token)
                         current_state=4
                 case 4:
                     # Esse é o estado E0 do automato
@@ -1026,7 +1038,7 @@ class analisador_sintatico:
                       #retorna vai para o estado final e faz o retorno da função
                       current_state=11
                     elif(self.current_token.token == ';'):
-                      self.get_next_token()
+                      #self.get_next_token()
                       current_state = 11
                     elif(self.current_token.token == ','):
                       current_state = 11
@@ -1072,10 +1084,8 @@ class analisador_sintatico:
                     pass
                 case 11:
                     fim_producao= True
-                    print('cabou')
                 case _:
                     pass
-        print('encerrei a expresao geral')
         return None
    
    #--------------------------------------------------------------------------------------------------
@@ -1086,11 +1096,82 @@ class analisador_sintatico:
     '''
     # método que analisa a formação de um bloco se
     def funcao_se(self):
-        pass
-    
+        current_state = 0
+        #variavel que define o fim da estrutura em produção
+        fim_producao = False
+        # Elimina o 'se'
+        self.get_next_token()
+
+        while(self.current_token != None and not fim_producao):
+            match(current_state):
+                case 0:
+                    if(self.current_token.token =='('):
+                        self.get_next_token()
+                        current_state=1
+                case 1:
+                    # após um ( espera uma expressão geral
+                    self.funcao_formacao_expressao_geral()
+                    current_state=2
+                case 2:
+                    if(self.current_token.token ==')'):
+                        self.get_next_token()
+                        current_state=3
+                case 3:
+                    if(self.current_token.token =='{'):
+                        self.get_next_token()
+                        current_state=4
+                case 4:
+                    # após { espera um bloco ou um }
+                    if(self.current_token.token == '}'):
+                        self.get_next_token()
+                        current_state=6
+                    else:
+                        self.funcao_bloco()
+                        current_state = 5
+                case 5:
+                     if(self.current_token.token == '}'):
+                        self.get_next_token()
+                        current_state=6
+                case 6:
+                    if(self.current_token.token =='senao'):
+                        self.funcao_senao()
+                        current_state=7
+                    else:
+                        current_state=7
+                case 7:
+                    fim_producao= True
+                case _:
+                    pass
     # método que analisa a formação de um bloco senão
     def funcao_senao(self):
-        pass
+        current_state = 0
+        #variavel que define o fim da estrutura em produção
+        fim_producao = False
+        # Elimina o 'senao'
+        self.get_next_token()
+
+        while(self.current_token != None and not fim_producao):
+            match(current_state):
+                case 0:
+                    if(self.current_token.token =='{'):
+                        self.get_next_token()
+                        current_state=1
+                case 1:
+                    # após { espera um bloco ou um }
+                    if(self.current_token.token == '}'):
+                        self.get_next_token()
+                        current_state=3
+                    else:
+                        self.funcao_bloco()
+                        current_state = 2
+                case 2:
+                     if(self.current_token.token == '}'):
+                        self.get_next_token()
+                        current_state=3
+                case 3:
+                    fim_producao= True
+                case _:
+                    pass
     #método que analisa a formação de um bloco enquanto
     def funcao_enquanto(self):
         pass
@@ -1162,7 +1243,52 @@ class analisador_sintatico:
 
     # método que analisa a formação de uma expressão de reatribuição
     def funcao_reatribuicao(self):
-        pass
+        current_state = 0
+        #variavel que define o fim da estrutura em produção
+        fim_producao = False
+        # Elimina o IDE
+        self.get_next_token()
+
+        while(self.current_token != None and not fim_producao):
+            match(current_state):
+                case 0:
+                    if(self.current_token.token == '['):
+                        self.get_next_token()
+                        current_state=1
+                    elif(self.current_token.token == '.'):
+                        self.get_next_token()
+                        current_state=3
+                    elif(self.current_token.token == '='):
+                        self.get_next_token()
+                        current_state=4
+                    else:
+                        pass
+                case 1:
+                    #após um [ espera uma expressão númerica
+                    self.funcao_formacao_expressao_numerica()
+                    current_state=2
+                case 2:
+                    if(self.current_token.token == ']'):
+                        self.get_next_token()
+                        current_state=0
+                    else:
+                        pass
+                case 3:
+                    if(self.current_token.code == 'IDE'):
+                        self.get_next_token()
+                        current_state=0
+                case 4:
+                    # após um = espera uma expressão geral
+                    self.funcao_formacao_expressao_geral()
+                    current_state=5
+                case 5:
+                    if(self.current_token.token == ';'):
+                        self.get_next_token()
+                        current_state=6
+                case 6:
+                    fim_producao = True
+                case _:
+                    pass
 
     # método executa a analise da formação da sintaxe do programa
     def proxima_producao(self):
@@ -1179,7 +1305,9 @@ a.token_list= a.read_tokens()
 a.proxima_producao()
 #a.get_next_token()
 
-
+'''
 while(a.current_token !=None):
-    print('nova funcao leia')
-    a.funcao_escreva()
+    print('novo escopo')
+    a.funcao_escopo()
+    a.get_next_token()
+    '''
