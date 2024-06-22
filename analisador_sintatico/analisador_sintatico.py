@@ -96,9 +96,12 @@ class analisador_sintatico:
                         case 'registro':
                             self.funcao_registro()
                             current_state = 2
-                        case tipo if tipo in TIPOS:
+                        case 'funcao':
                             self.funcao_listagem_funcoes()
-                            current_state = 'fim'
+                            current_state = 4
+                        case 'principal':
+                            self.funcao_principal()
+                            current_state=5
                         case _:
                             pass
                 case 1: #verifica as opções de formação possiveis após um bloco de constantes
@@ -109,9 +112,12 @@ class analisador_sintatico:
                         case 'registro':
                             self.funcao_registro()
                             current_state = 2
-                        case tipo if tipo in TIPOS:
+                        case 'funcao':
                             self.funcao_listagem_funcoes()
-                            current_state = 'fim'
+                            current_state = 4
+                        case 'principal':
+                            self.funcao_principal()
+                            current_state=5
                         case _:
                             pass
                 case 2:#verifica as opções de formação possiveis após um bloco de variavies
@@ -119,25 +125,104 @@ class analisador_sintatico:
                         case 'registro':
                             self.funcao_registro()
                             current_state = 2
-                        case tipo if tipo in TIPOS:
+                        case 'funcao':
                             self.funcao_listagem_funcoes()
-                            current_state = 3
+                            current_state = 4
+                        case 'principal':
+                            self.funcao_principal()
+                            current_state=5
                         case _:
                             current_state='fim'
                 case 3: # verifica as opções de formação possivéis após blocos de registros
                     match(self.current_token.token):
-                        case tipo if tipo in TIPOS:
+                        case 'funcao':
                             self.funcao_listagem_funcoes()
-                            current_state = 3
+                            current_state = 4
+                        case 'principal':
+                            self.funcao_principal()
+                            current_state=5
                         case _:
                             current_state='fim'
                 case 4: #verifica as opções de formação possivéis após declaração de funções
-                    pass
+                    if(self.current_token.token == 'funcao'):
+                        self.funcao_listagem_funcoes()
+                        current_state=4
+                    elif(self.current_token.token == 'principal'):
+                        self.funcao_principal()
+                        current_state=5
+                    elif(self.current_token.token == '}'):
+                        current_state=5
                 case 5:
                     fim_producao = True
                 case _:
                    fim_producao = True
-           
+
+    # função para formação de um escopo
+    def funcao_escopo(self):
+        # variavel para controle dos estados
+        current_state= 0
+        #variavel que define o fim da estrutura em produção
+        fim_producao = False
+
+        while(self.current_token != None and not fim_producao):
+            match(current_state):
+                case 0:
+                    # no caso 0 verifica qual o token que inicia a estrutura do escopo
+                    # outro match case para as opções possivéis {constantes,variaveis,bloco,retorno}
+                    match(self.current_token.token):
+                        case 'constantes':
+                            self.funcao_bloco_constantes()
+                            current_state = 1
+                        case 'variaveis':
+                            self.funcao_bloco_variaveis()
+                            current_state = 2
+                        case 'retorno':
+                            self.funcao_retorno()
+                            current_state = 4
+                        case _:
+                            # como um bloco pode iniciar com varias opções
+                            # o caso default passa para o estado de fomrção do bloco
+                            current_state=3
+                case 1:
+                    # após formação de um bloco de constantes
+                    match(self.current_token.token):
+                        case 'variaveis':
+                            self.funcao_bloco_variaveis()
+                            current_state = 2
+                        case 'retorno':
+                            self.funcao_retorno()
+                            current_state = 4
+                        case _:
+                            # como um bloco pode iniciar com varias opções
+                            # o caso default passa para o estado de fomrção do bloco
+                            current_state=3
+                case 2:
+                    # após formação de um bloco de variaveis
+                    match(self.current_token.token):
+                        case 'retorno':
+                            self.funcao_retorno()
+                            current_state = 4
+                        case _:
+                            # como um bloco pode iniciar com varias opções
+                            # o caso default passa para o estado de fomrção do bloco
+                            current_state=3
+                case 3:
+                    # estado de formação do bloco
+                    self.funcao_bloco()
+                    current_state=4
+                case 4:
+                    #chama a função para retorno
+                    self.funcao_retorno()
+                    # vai para o estado final
+                    current_state=5
+                case 5:
+                    if(self.current_token.token =='}'):
+                        current_state=6
+                case 6:
+                    fim_producao = True
+                case _:
+                    pass
+
     #função para analisar formação da declaração de um bloco de constantes
     def funcao_bloco_constantes(self):
         current_state = 0
@@ -158,9 +243,9 @@ class analisador_sintatico:
                             self.get_next_token()
                             current_state=2
                         case 'inteiro':
-                            self.funcao_declaracao_constantes_inteiras()
+                            self.funcao_declaracao_constantes_numericas()
                         case 'real':
-                            self.funcao_declaracao_constantes_reais()
+                            self.funcao_declaracao_constantes_numericas()
                         case 'booleano':
                             self.funcao_declaracao_constantes_booleanos()
                         case 'char':
@@ -236,43 +321,68 @@ class analisador_sintatico:
         current_state = 0
         #variavel que define o fim da estrutura em produção
         fim_producao = False
-        # atualiza para o proximo token, elimina 'tipo de retorno'
+        # atualiza para o proximo token, elimina funcao
         self.get_next_token()
 
         while(self.current_token != None and not fim_producao):
             match(current_state):
                 case 0:
-                    if(self.current_token.code == 'IDE'):
+                    if(self.current_token.token in TIPOS):
                         current_state=1
                         self.get_next_token()
                 case 1:
+                     if(self.current_token.code == 'IDE'):
+                        current_state=2
+                        self.get_next_token()
+                case 2:
                     if(self.current_token.token == '('):
                         self.funcao_listagem_parametros()
-                        current_state=2
-                case 2:
-                    if(self.current_token.token == '{'):
                         current_state=3
-                        self.get_next_token()
                 case 3:
-                    if(self.current_token.token == '}'):
+                    if(self.current_token.token == '{'):
                         current_state=4
                         self.get_next_token()
                 case 4:
+                    if(self.current_token.token == '}'):
+                        current_state=5
+                        self.get_next_token()
+                case 5:
                     fim_producao=True
                 case _:
                     pass
 
     # função para analisar formação da declarção da função principal
     def funcao_principal(self):
-        pass
+        current_state = 0
+        #variavel que define o fim da estrutura em produção
+        fim_producao = False
+        # atualiza para o proximo token, elimina principal
+        self.get_next_token()
+
+        while(self.current_token != None and not fim_producao):
+            match(current_state):
+                case 0:
+                    if(self.current_token.token == '('):
+                        self.funcao_listagem_parametros()
+                        current_state=1
+                case 1:
+                    if(self.current_token.token == '{'):
+                        current_state=2
+                        self.get_next_token()
+                case 2:
+                    if(self.current_token.token == '}'):
+                        current_state=3
+                        self.get_next_token()
+                case 3:
+                    fim_producao=True
+                case _:
+                    pass
     
     #--------------------------------------------------------------------------------------
     ''' funções relacionadas ao bloco de constantes
-    | função para declaração e listagem de constantes inteiras
-    | existe a possibilidade juntar todas estas funções em uma unica
-    | mas deixo para depois
+    | função para declaração e listagem de constantes numericas
     '''
-    def funcao_declaracao_constantes_inteiras(self):
+    def funcao_declaracao_constantes_numericas(self):
         current_state = 0
         # atualiza para o proximo token, elimina 'inteiro'
         self.get_next_token()
@@ -290,9 +400,9 @@ class analisador_sintatico:
                         current_state= 2
                         self.get_next_token()
                 case 2:
-                    if(self.current_token.code == 'NRO'):
-                        current_state = 3
-                        self.get_next_token()
+                    #após um = espera uma expressão numérica
+                    self.funcao_formacao_expressao_numerica()
+                    current_state = 3
                 case 3:
                     if(self.current_token.token == ';'):
                         current_state= 4
@@ -305,6 +415,7 @@ class analisador_sintatico:
                 case _:
                     pass
     # função para declaração e listagem de constantes reais
+    # não é mais utilizada
     def funcao_declaracao_constantes_reais(self):
         current_state = 0
         # atualiza para o proximo token, elimina 'real'
@@ -323,9 +434,8 @@ class analisador_sintatico:
                         current_state= 2
                         self.get_next_token()
                 case 2:
-                    if(self.current_token.code == 'NRO'):
-                        current_state = 3
-                        self.get_next_token()
+                    self.funcao_formacao_expressao_numerica()
+                    current_state = 3
                 case 3:
                     if(self.current_token.token == ';'):
                         current_state= 4
@@ -338,7 +448,7 @@ class analisador_sintatico:
                 case _:
                     pass
         
-    # função para declaração e listagem de constantes de caracteres
+    # função para declaração e listagem de constantes de caracteres e cadeias
     def funcao_declaracao_constantes_char(self):
         current_state = 0
         # atualiza para o proximo token, elimina 'char'
@@ -394,9 +504,9 @@ class analisador_sintatico:
                         current_state= 2
                         self.get_next_token()
                 case 2:
-                    if(self.current_token.token == 'verdadeiro' or self.current_token.token == 'falso'):
-                        current_state = 3
-                        self.get_next_token()
+                    # após um = espera uma expressão booleana
+                    self.funcao_formacao_expressao_booleana()
+                    current_state = 3
                 case 3:
                     if(self.current_token.token == ';'):
                         current_state= 4
@@ -458,9 +568,8 @@ class analisador_sintatico:
                         current_state=1
                         self.get_next_token()
                 case 1:
-                    if(self.current_token.code == 'IDE' or self.current_token.code == 'NRO'):
-                        current_state=2
-                        self.get_next_token()
+                   self.funcao_formacao_expressao_numerica()
+                   current_state=2
                 case 2:
                      if(self.current_token.token == ']'):
                         current_state=3
@@ -491,20 +600,29 @@ class analisador_sintatico:
                         current_state=1
                         self.get_next_token()
                     elif(self.current_token.token ==')'):
-                        current_state=3
+                        current_state=4
                         self.get_next_token()
                 case 1:
                     if(self.current_token.code =='IDE'):
                         current_state=2
                         self.get_next_token()
                 case 2:
-                    if(self.current_token.token ==')'):
+                    if(self.current_token.token =='['):
+                        #chama a função de produção de vetor
+                        self.funcao_formacao_vetor_matriz()
                         current_state=3
+                        print('proximo token',self.current_token)
+                    else:
+                        #caso contrario passa para o estado 3
+                        current_state=3
+                case 3:
+                    if(self.current_token.token ==')'):
+                        current_state=4
                         self.get_next_token()
                     elif(self.current_token.token == ','):
                         current_state=0
                         self.get_next_token()
-                case 3:
+                case 4:
                     fim_producao=True
                 case _:
                     pass
@@ -521,11 +639,14 @@ class analisador_sintatico:
         while(self.current_token != None and not fim_producao):
             match(current_state):
                 case 0:
-                    # no caso 0 inicia com uma expressão geral
-                    self.funcao_formacao_expressao_geral()
-                    current_state=1
+                    if(self.current_token.token == ')'):
+                        current_state=2
+                    else:
+                        # chama a expressão geral
+                        self.funcao_formacao_expressao_geral()
+                        current_state=1    
                 case 1:
-                    if(self.current_token == ')'):
+                    if(self.current_token.token == ')'):
                         #finaliza chamada
                         current_state=2
                     elif(self.current_token.token == ','):
@@ -535,14 +656,13 @@ class analisador_sintatico:
                     fim_producao=True
                 case _:
                     pass    
-    #função que analisa formação da formação do uso de um identificador,vetor,registro ou chamada defunção
+    
+    # função que analisa formação da formação do uso de um identificador,vetor,registro ou chamada defunção
     def funcao_formacao_ideVeRe_chamada(self):
         count = 0
         current_state = 0
         #variavel que define o fim da estrutura em produção
         fim_producao = False
-        # atualiza para o proximo token, elimina 'IDE'
-        self.get_next_token()
 
         while(self.current_token != None and not fim_producao):
             match(current_state):
@@ -593,8 +713,102 @@ class analisador_sintatico:
                     fim_producao= True
                 case _:
                     pass
-        
     
+    # Listagem dos parametros da função leia
+    def funcao_listagem_parametros_leia(self):
+        current_state = 0
+        #variavel que define o fim da estrutura em produção
+        fim_producao = False
+
+        while(self.current_token != None and not fim_producao):
+            match(current_state):
+                case 0:
+                    if(self.current_token.code == 'IDE'):
+                        self.get_next_token()
+                        self.funcao_formacao_ideVeRe_chamada()
+                        current_state=1
+                    elif(self.current_token.token ==')'):
+                        current_state=2
+                case 1:
+                    if(self.current_token.token == ','):
+                        current_state=0
+                        self.get_next_token()
+                    elif(self.current_token.token ==')'):
+                        current_state=2
+                case 2:
+                    fim_producao=True
+                case _:
+                    pass 
+    # função do retorno
+    def funcao_retorno(self):
+        current_state = 0
+        #variavel que define o fim da estrutura em produção
+        fim_producao = False
+        # elimina o 'retorno'
+        self.get_next_token()
+
+        while(self.current_token != None and not fim_producao):
+            match(current_state):
+                case 0:
+                    if(self.current_token.token ==';'):
+                        #vai direto para o estado final
+                        current_state=2
+                        self.get_next_token()
+                    else:
+                        #chama produção da expressão geral
+                        self.funcao_formacao_expressao_geral()
+                        current_state=1
+                case 1:
+                    if(self.current_token.token ==';'):
+                        current_state=2
+                        self.get_next_token()
+                case 2:
+                    fim_producao
+                case _:
+                    pass
+    
+    # função de formação do bloco
+    def funcao_bloco(self):
+        current_state = 0
+        #variavel que define o fim da estrutura em produção
+        fim_producao = False
+
+        while(self.current_token != None and not fim_producao):
+            match(current_state):
+                case 0:
+                    # no caso 0 verifica qual o token que inicia a estrutura corpo
+                    # outro match case para as opções possivéis {se,enquanto,leia,escreva,reatribuicao}
+                    match(self.current_token.token):
+                        case 'se':
+                            #chama a funcao_se e permanece no estado atual
+                            self.funcao_se()
+                        case 'enquanto':
+                            #chama a enquanto e permanece no estado atual
+                            self.funcao_bloco_enquanto()
+                        case 'leia':
+                            #chama a leia e permanece no estado atual
+                            self.funcao_leia()
+                        case 'escreva':
+                            #chama a escreva e permanece no estado atual
+                            self.funcao_escreva()
+                        case 'retorno':
+                            # um retorno é o fim para um bloco
+                            # vai para o estado final
+                            current_state=2
+                        case _:
+                            if(self.current_token.code =='IDE'):
+                                #vai para o estado de reatribuuição
+                                current_state=1
+                case 1:
+                    #chama a função de reatribuição
+                    self.funcao_reatribuicao()
+                    current_state=0
+                case 2:
+                    fim_producao= True
+                case _:
+                    pass
+                    
+
    #--------------------------------------------------------------------------------------------------
     '''
     |   Funções relacionadas a produções de expressões
@@ -612,58 +826,58 @@ class analisador_sintatico:
             match(current_state):
                 # Estado inicial
                 case 0:
-                    if(self.current_token.token =='verdadeiro' or self.current_token.token =='falso' or self.current_token.code =='IDE'):
+                    if(self.current_token.token =='verdadeiro' or self.current_token.token =='falso'):
                         current_state=1
                         self.get_next_token()
-                    elif(self.current_token.token == '||' or self.current_token.token == '&&'):
+                    elif(self.current_token.code =='IDE'):
+                        self.get_next_token()
+                        self.funcao_formacao_ideVeRe_chamada()
+                        current_state=1
+                    elif(self.current_token.token == '||' or self.current_token.token == '&&' or self.current_token.token == '!'):
                         current_state=2
                         self.get_next_token()
-                    elif(self.current_token.token == '!'):
-                        current_state=2
+                    elif(self.current_token.token == '('):
+                        #consome o token atual
                         self.get_next_token()
-                # Estado após receber um identificador ou valor booleano
+                        # chama a função de formação da expressão booleana
+                        self.funcao_formacao_expressao_booleana()
+                        current_state=3
+                # Estado após receber um identificador ou valor booleano ou (
                 case 1:
                     if(self.current_token.token == '||' or self.current_token.token == '&&'):
                         current_state=2
                         self.get_next_token()
-                    elif(self.current_token.token ==')'):
+                    elif(self.current_token.token == ')'):
+                        #finaliza esta expressão booleana
                         current_state=4
-                        self.get_next_token()
+                    elif(self.current_token.token == ';' or self.current_token.token == ','):
+                        current_state=4
                 #estado após receber !,&& ou ||
                 case 2:
-                    if(self.current_token.token =='verdadeiro' or self.current_token.token =='falso' or self.current_token.code =='IDE'):
-                        current_state=3
+                    if(self.current_token.token =='verdadeiro' or self.current_token.token =='falso'):
+                        current_state=1
                         self.get_next_token()
+                    elif(self.current_token.code =='IDE'):
+                        self.get_next_token()
+                        self.funcao_formacao_ideVeRe_chamada()
+                        current_state=1
                     elif(self.current_token.token == '('):
-                        # com a abertura de parenteses uma nova expressão booleana é formada
-                        # consome o token atual e passa para o estado inicial
-                        current_state=0
                         self.get_next_token()
+                        self.funcao_formacao_expressao_booleana()
+                        current_state=3
+                    elif(self.current_token.token == '!'):
+                        self.get_next_token()
+                        current_state=2
+                # após abertura de parenteses
                 case 3:
-                    if(self.current_token.token ==';'):
-                        #chegou ao fim da expressão
-                        current_state=5
+                     if(self.current_token.token == ')'):
                         self.get_next_token()
-                    elif(self.current_token.token == ')'):
-                        # fechamento de paranteses leva a duas opções
-                        current_state=4
-                        self.get_next_token()
-                    elif(self.current_token.token == '||'or self.current_token.token == '&&'):
-                        #volta para o inicio sem consumir o token
-                        current_state=0
+                        current_state=1
                 case 4:
-                    if(self.current_token.token == ';'):
-                        current_state=5
-                        self.get_next_token()
-                    # se a expressão não é encerrada então só pode ser seguida por
-                    # | ou &
-                    elif(self.current_token.token == '||'or self.current_token.token == '&&'):
-                        #volta para o estado inicial sem consumir o token
-                        current_state=0
-                case 5:
-                    fim_producao=True
+                    fim_producao = True
                 case _:
                     pass
+        return None
     # expressão númerica
     def funcao_formacao_expressao_numerica(self):
         current_state = 0
@@ -683,30 +897,35 @@ class analisador_sintatico:
                     elif(self.current_token.token =='('):
                         # após um abre parenteses espera uma expressao numerica
                         # faz a chamada recursiva para a função
-                        #self.funcao_formacao_expressao_numerica() 
-                        current_state=1
+                        #self.funcao_formacao_expressao_numerica()
+                        self.get_next_token()
+                        self.funcao_formacao_expressao_numerica()
+                        current_state=3
                     elif(self.current_token.code == 'IDE'):
+                        self.get_next_token()
                         self.funcao_formacao_ideVeRe_chamada()
                         current_state=2
                     elif(self.current_token.code == 'NRO'):
                         self.get_next_token()
                         current_state=2
                     else:
-                        current_state=3
+                        current_state=4
                 case 1:
                     # após um operador exige obrigatoriamente um numero,IDE ou (
                     if(self.current_token.code == 'NRO'):
                         self.get_next_token()
                         current_state=2
                     elif(self.current_token.code == 'IDE'):
+                        self.get_next_token()
                         self.funcao_formacao_ideVeRe_chamada()
                         current_state=2
                     elif(self.current_token.token == '('):
                         # após um abre parenteses espera uma expressao numerica
                         # faz a chamada recursiva para a função
-                        # self.funcao_formacao_expressao_numerica() 
+                        # self.funcao_formacao_expressao_numerica()
                         self.get_next_token()
-                        current_state=0
+                        self.funcao_formacao_expressao_numerica()
+                        current_state=3
                 case 2:
                     # após um número,ide ou ) exige ser um operador,) ou fim da expressão
                     if(self.current_token.token =='+' or self.current_token.token =='-'):
@@ -716,17 +935,22 @@ class analisador_sintatico:
                         self.get_next_token()
                         current_state=1
                     elif(self.current_token.token ==')'):
-                        self.get_next_token()
-                        # mantem no mesmo estado
-                    elif(self.current_token.token == ';'):
-                        self.get_next_token()
-                        current_state=3
+                        current_state=4
+                    elif(self.current_token.token == ';' or self.current_token.token == ',' or self.current_token.token == ']'):
+                        current_state=4
                     else:
-                        current_state=3
+                        current_state=4
                 case 3:
-                    fim_producao= True
+                    # após receber uma abertura de parnteses
+                    # finalizada outra chamada de expressao numerica
+                    if(self.current_token.token == ')'):
+                      self.get_next_token()
+                      current_state=2
+                case 4:
+                    fim_producao=True
                 case _:
                     pass
+        return None
 
     # a bendita expressão geral
     def funcao_formacao_expressao_geral(self):
@@ -736,6 +960,7 @@ class analisador_sintatico:
         # devido a recursão da expressão geral não há elminação do primeiro token de formação
 
         while(self.current_token != None and not fim_producao):
+            #print('estado',current_state,' token',self.current_token)
             match(current_state):
                 # estado inicial da expressão geral
                 case 0:
@@ -746,8 +971,10 @@ class analisador_sintatico:
                         current_state = 4
                     elif(self.current_token.code == 'NRO' or self.current_token.code == 'CAC'):
                         self.get_next_token()
+                        print('passei aqui')
                         current_state = 4
                     elif(self.current_token.code == 'IDE'):
+                        self.get_next_token()
                         current_state=1
                     elif(self.current_token.token == '!'):
                         self.funcao_formacao_expressao_booleana()
@@ -764,12 +991,14 @@ class analisador_sintatico:
                     # deve ser feita a chamada a função e depois retorno para esse estado
                     # para que o fecha parenteses possa ser considerado
                     self.funcao_formacao_expressao_geral()
+                    print('recebi o retorno')
                     current_state=3
                 case 3:
                     # após receber uma expressão geral
                     # agora precisa ser o fecha parenteses
                     if(self.current_token.token == ')'):
                         self.get_next_token()
+                        print('estou passando o token',self.current_token.token)
                         current_state=4
                 case 4:
                     # Esse é o estado E0 do automato
@@ -792,6 +1021,15 @@ class analisador_sintatico:
                     elif(self.current_token.token == '||'):
                         self.get_next_token()
                         current_state = 0
+                    elif(self.current_token.token == ')'):
+                      #finalizou a recursão da expressão geral
+                      #retorna vai para o estado final e faz o retorno da função
+                      current_state=11
+                    elif(self.current_token.token == ';'):
+                      self.get_next_token()
+                      current_state = 11
+                    elif(self.current_token.token == ','):
+                      current_state = 11
                     else:
                         # este else inviabiliza o tratamento de erro em expressões gerais
                         # por enquanto é a opção para finalizar uma expressão geral
@@ -837,7 +1075,96 @@ class analisador_sintatico:
                     print('cabou')
                 case _:
                     pass
-   # método executa a analise da formação da sintaxe do programa
+        print('encerrei a expresao geral')
+        return None
+   
+   #--------------------------------------------------------------------------------------------------
+    '''
+    |   Funções relacionadas ao bloco
+    |   se, enquanto,leia,escreva,reatribuição
+    |
+    '''
+    # método que analisa a formação de um bloco se
+    def funcao_se(self):
+        pass
+    
+    # método que analisa a formação de um bloco senão
+    def funcao_senao(self):
+        pass
+    #método que analisa a formação de um bloco enquanto
+    def funcao_enquanto(self):
+        pass
+
+    # método que analisa a formação de uma função leia
+    def funcao_leia(self):
+        current_state = 0
+        #variavel que define o fim da estrutura em produção
+        fim_producao = False
+        # Elimina o 'leia'
+        self.get_next_token()
+
+        while(self.current_token != None and not fim_producao):
+            match(current_state):
+                case 0:
+                    if(self.current_token.token == '('):
+                        self.get_next_token()
+                        current_state=1
+                case 1:
+                    # chama o mesmo método de listagem de variaveis
+                    self.funcao_listagem_parametros_leia()
+                    current_state=2
+                case 2:
+                    if(self.current_token.token == ')'):
+                        self.get_next_token()
+                        current_state=3
+                case 3:
+                    if(self.current_token.token == ';'):
+                        self.get_next_token()
+                        current_state=4
+                case 4:
+                    fim_producao= True
+                case _:
+                    pass
+
+    # método que analisa a formação de uma função escreva
+    def funcao_escreva(self):
+        current_state = 0
+        #variavel que define o fim da estrutura em produção
+        fim_producao = False
+        # Elimina o 'escreva'
+        self.get_next_token()
+
+        while(self.current_token != None and not fim_producao):
+            match(current_state):
+                case 0:
+                    if(self.current_token.token == '('):
+                        current_state=1
+                case 1:
+                    if(self.current_token.token == ')'):
+                        self.get_next_token()
+                        current_state=3
+                    else:
+                        # chama o mesmo método de listagem de chamada de função
+                        self.funcao_listagem_parametros_chamada()
+                        current_state=2
+                case 2:
+                    if(self.current_token.token == ')'):
+                        self.get_next_token()
+                        current_state=3
+                case 3:
+                    if(self.current_token.token == ';'):
+                        self.get_next_token()
+                        current_state=4
+                case 4:
+                    fim_producao= True
+                case _:
+                    pass
+
+    # método que analisa a formação de uma expressão de reatribuição
+    def funcao_reatribuicao(self):
+        pass
+
+    # método executa a analise da formação da sintaxe do programa
     def proxima_producao(self):
         self.get_next_token()
 
@@ -849,9 +1176,10 @@ a = analisador_sintatico()
 
 a.token_list= a.read_tokens()
 #print(a.token_list,'\n\n')
-#a.proxima_producao()
-a.get_next_token()
+a.proxima_producao()
+#a.get_next_token()
 
 
 while(a.current_token !=None):
-    a.funcao_formacao_expressao_geral()
+    print('nova funcao leia')
+    a.funcao_escreva()
