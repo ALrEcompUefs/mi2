@@ -145,11 +145,9 @@ class analisador_sintatico:
                             current_state='fim'
                 case 4: #verifica as opções de formação possivéis após declaração de funções
                     if(self.current_token.token == 'funcao'):
-                        print('nova funcao')
                         self.funcao_listagem_funcoes()
                         current_state=4
                     elif(self.current_token.token == 'principal'):
-                        print('funcao_principal')
                         self.funcao_principal()
                         current_state=5
                     elif(self.current_token.token == '}'):
@@ -293,8 +291,8 @@ class analisador_sintatico:
                         case 'cadeia':
                             self.funcao_declaracao_variavel()
                         case _:
-                            if(self.current_token.code == 'PRE'):
-                                pass
+                            if(self.current_token.code == 'IDE'):
+                                self.funcao_declaracao_variavel()
                 case 2:
                     fim_producao=True
                 case _:
@@ -329,7 +327,7 @@ class analisador_sintatico:
         while(self.current_token != None and not fim_producao):
             match(current_state):
                 case 0:
-                    if(self.current_token.token in TIPOS):
+                    if(self.current_token.token in TIPOS or self.current_token.code =='IDE'):
                         current_state=1
                         self.get_next_token()
                 case 1:
@@ -356,9 +354,7 @@ class analisador_sintatico:
                     if(self.current_token.token == '}'):
                         current_state=6
                         self.get_next_token()
-                        print('fechei parenteses a funcao')
                 case 6:
-                    print('finalizei a funcao')
                     fim_producao=True
                 case _:
                     pass
@@ -382,10 +378,18 @@ class analisador_sintatico:
                         current_state=2
                         self.get_next_token()
                 case 2:
+                    # após { espera um escopo ou um }
                     if(self.current_token.token == '}'):
-                        current_state=3
+                        current_state=5
                         self.get_next_token()
-                case 3:
+                    else:
+                        self.funcao_escopo()
+                        current_state=4
+                case 4:
+                    if(self.current_token.token == '}'):
+                        current_state=5
+                        self.get_next_token()
+                case 5:
                     fim_producao=True
                 case _:
                     pass
@@ -623,7 +627,6 @@ class analisador_sintatico:
                         #chama a função de produção de vetor
                         self.funcao_formacao_vetor_matriz()
                         current_state=3
-                        print('proximo token',self.current_token)
                     else:
                         #caso contrario passa para o estado 3
                         current_state=3
@@ -671,7 +674,6 @@ class analisador_sintatico:
     
     # função que analisa formação da formação do uso de um identificador,vetor,registro ou chamada defunção
     def funcao_formacao_ideVeRe_chamada(self):
-        count = 0
         current_state = 0
         #variavel que define o fim da estrutura em produção
         fim_producao = False
@@ -685,7 +687,7 @@ class analisador_sintatico:
                     elif(self.current_token.token =='.'):
                         current_state=2
                         self.get_next_token()
-                    elif(self.current_token == '('):
+                    elif(self.current_token.token == '('):
                         current_state=3
                     else:
                         current_state=7
@@ -796,7 +798,7 @@ class analisador_sintatico:
                             self.funcao_se()
                         case 'enquanto':
                             #chama a enquanto e permanece no estado atual
-                            self.funcao_bloco_enquanto()
+                            self.funcao_enquanto()
                         case 'leia':
                             #chama a leia e permanece no estado atual
                             self.funcao_leia()
@@ -1174,7 +1176,46 @@ class analisador_sintatico:
                     pass
     #método que analisa a formação de um bloco enquanto
     def funcao_enquanto(self):
-        pass
+        current_state = 0
+        #variavel que define o fim da estrutura em produção
+        fim_producao = False
+        # Elimina o 'enquanto'
+        self.get_next_token()
+
+        while(self.current_token != None and not fim_producao):
+            match(current_state):
+                case 0:
+                    if(self.current_token.token =='('):
+                        self.get_next_token()
+                        current_state=1
+                case 1:
+                    # após um ( espera uma expressão geral
+                    self.funcao_formacao_expressao_geral()
+                    current_state=2
+                case 2:
+                    if(self.current_token.token ==')'):
+                        self.get_next_token()
+                        current_state=3
+                case 3:
+                    if(self.current_token.token =='{'):
+                        self.get_next_token()
+                        current_state=4
+                case 4:
+                    # após { espera um bloco ou um }
+                    if(self.current_token.token == '}'):
+                        self.get_next_token()
+                        current_state=6
+                    else:
+                        self.funcao_bloco()
+                        current_state = 5
+                case 5:
+                     if(self.current_token.token == '}'):
+                        self.get_next_token()
+                        current_state=6
+                case 6:
+                    fim_producao= True
+                case _:
+                    pass
 
     # método que analisa a formação de uma função leia
     def funcao_leia(self):
@@ -1250,6 +1291,7 @@ class analisador_sintatico:
         self.get_next_token()
 
         while(self.current_token != None and not fim_producao):
+            #print('travei em:',current_state,'token',self.current_token)
             match(current_state):
                 case 0:
                     if(self.current_token.token == '['):
@@ -1294,7 +1336,7 @@ class analisador_sintatico:
     def proxima_producao(self):
         self.get_next_token()
 
-        if( self.current_token.token == 'ALGORITMO'):
+        if( self.current_token.token == 'algoritmo'):
             self.funcao_algortimo()
     
     
