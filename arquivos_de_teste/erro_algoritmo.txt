@@ -1,0 +1,9 @@
+1    IDE    ola
+1    PRE    algoritmo
+1    DEL    {
+2    PRE    principal
+2    DEL    (
+2    DEL    )
+2    DEL    {
+3    DEL    }
+4    DEL    }

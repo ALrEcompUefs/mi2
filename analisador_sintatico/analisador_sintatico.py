@@ -1,7 +1,7 @@
 from config import (OP_LOGIC_ONE_CHAR_SET, OP_RELATIONAL_ONE_CHAR_SET, OP_ARITIMETIC_ONE_CHAR_SET,
                     DELIMETER_CHAR_SET, STOP_ERRORS, ASCII,RESERVED_WORDS,TIPOS)
 
-from interfaces import ComentarioBlocoAberto, Token, TokenDefeituoso
+from interfaces import ComentarioBlocoAberto, Token, SintaxeMalFormada
 
 import os
 import re
@@ -11,10 +11,9 @@ class analisador_sintatico:
         self.current_token = None
         self.next_token = None
         self.token_list = None
-        
 
         # lista de erros sintaticos encontrados
-        self.errors = []
+        self.sintaxe_errors_list = []
 
     # função que atualiza o tokens atual e proximo
     def get_next_token(self):
@@ -1334,12 +1333,49 @@ class analisador_sintatico:
 
     # método executa a analise da formação da sintaxe do programa
     def proxima_producao(self):
+        # variavel de controle dos estados
+        current_state =0
+        #obtém primeiro token
         self.get_next_token()
+        # variavel para controle do laço
+        fim_programa = False
+        while(not fim_programa):
+            match(current_state):
+                case 0:
+                    if( self.current_token.token == 'algoritmo'):
+                        self.funcao_algortimo()
+                        current_state =2
+                    else:
+                        current_state=1
+                # estado para recuperação de erro
+                case 1:
+                    # linha onde o erro começa
+                    start_line = self.current_token.line
+                    end_line='EOF'
+                    # token esperado
+                    expected_token = ['algoritmo']
+                    # token lido
+                    read_token = self.current_token.token
 
-        if( self.current_token.token == 'algoritmo'):
-            self.funcao_algortimo()
-    
-    
+                    # executa o while até encontrar o token esperado ou que não existam mais tokens
+                    while(self.current_token.token not in expected_token and self.current_token != None):
+                        self.get_next_token()
+                    # após encerrar verifica se encontrou o token ou não
+                    if(self.current_token != None):
+                        # se não for vazio então encontrou o token
+                        end_line =self.current_token.line
+                    self.sintaxe_errors_list.append(SintaxeMalFormada(start_line,end_line,read_token,expected_token))
+                    # Indica o estado que deve ser direcionado após a recuperação do erro
+                    current_state=0
+                # Estado final
+                case 2:
+                    fim_programa=True
+                    print('programa analisado')
+                    print('Erros encontrados')
+                    if (self.sintaxe_errors_list != None):
+                        print(self.sintaxe_errors_list)
+                    
+                
 a = analisador_sintatico()
 
 a.token_list= a.read_tokens()
