@@ -34,7 +34,7 @@ class analisador_sintatico:
 
     # função que realiza a recuperação de erro do analisador sintatico
     # rcupera erros para tokens por valor
-    def recuperacao_de_erro(self,expected_token)->int:
+    def recuperacao_de_erro(self,expected_token):
 
         start_line = self.current_token.line
         end_line='EOF'
@@ -55,7 +55,7 @@ class analisador_sintatico:
 
     # função que realiza a recuperação de erro do analisador sintatico
     # recupera erros para tokens por tipo
-    def recuperacao_de_erro_tipo(self,expected_type)->int:
+    def recuperacao_de_erro_tipo(self,expected_type):
 
         start_line = self.current_token.line
         end_line='EOF'
@@ -122,7 +122,6 @@ class analisador_sintatico:
 
         # enquanto existirem tokens na lista o laço é executado
         while(self.current_token != None):
-            print(current_state)
             match current_state:
                 case 0:
                     if(self.current_token.token == '{'):
@@ -445,7 +444,7 @@ class analisador_sintatico:
                         current_state=1
                         self.get_next_token()
                     else:
-                        self.recuperacao_de_erro(['}'])
+                        self.recuperacao_de_erro(['{'])
                 case 1:
                     match(self.current_token.token):
                         case '}':
@@ -919,7 +918,10 @@ class analisador_sintatico:
                     elif(self.current_token.token == '('):
                         current_state=3
                     else:
-                        self.recuperacao_de_erro(['[','.','('])
+                        #self.recuperacao_de_erro(['[','.','('])
+                        # como a formação pode receber apenas um IDE
+                        # se não for nenhum dos tokens esperados então encerra a produção
+                        current_state=7
                 case 1:
                     # como é esperada uma expressão númerica
                     # faz a chamada para expressão númerica
@@ -1147,7 +1149,7 @@ class analisador_sintatico:
                         self.funcao_formacao_expressao_numerica()
                         current_state=3
                     else:
-                        self.recuperacao_de_erro_tipo_valor(['('],['IDE','('])
+                        self.recuperacao_de_erro_tipo_valor(['('],['IDE','NRO'])
                 case 2:
                     # após um número,ide ou ) exige ser um operador,) ou fim da expressão
                     if(self.current_token.token =='+' or self.current_token.token =='-'):
@@ -1205,6 +1207,8 @@ class analisador_sintatico:
                     elif(self.current_token.token == '('):
                         self.get_next_token()
                         current_state=2
+                    else:
+                        self.recuperacao_de_erro_tipo_valor(['verdadeiro','falso','!','('],['IDE','NRO','CAC'])
                 case 1:
                     # chama a função referente para essa produção
                     self.funcao_formacao_ideVeRe_chamada()
@@ -1221,6 +1225,8 @@ class analisador_sintatico:
                     if(self.current_token.token == ')'):
                         self.get_next_token()
                         current_state=4
+                    else:
+                        self.recuperacao_de_erro([')'])
                 case 4:
                     # Esse é o estado E0 do automato
                     #todas transições possivéis são listadas
@@ -1252,9 +1258,7 @@ class analisador_sintatico:
                     elif(self.current_token.token == ','):
                       current_state = 11
                     else:
-                        # este else inviabiliza o tratamento de erro em expressões gerais
-                        # por enquanto é a opção para finalizar uma expressão geral
-                        current_state=11
+                        self.recuperacao_de_erro(['*','/','+','-','>','<','>=','<=','==','!=','&&','||',')',';',','])
                 case 5:
                     if(self.current_token.token in ['>','<','>=','<=','==','!=']):
                         # consumindo o operador
@@ -1271,10 +1275,17 @@ class analisador_sintatico:
                         self.get_next_token()
                         #volta para o estado inicial
                         current_state = 0
+                    elif(self.current_token.token == ';'):
+                      #self.get_next_token()
+                      current_state = 11
+                    elif(self.current_token.token == ')'):
+                      #finalizou a recursão da expressão geral
+                      #retorna vai para o estado final e faz o retorno da função
+                      current_state=11
+                    elif(self.current_token.token == ','):
+                      current_state = 11
                     else:
-                        # este else inviabiliza o tratamento de erro em expressões gerais
-                        # por enquanto é a opção para finalizar uma expressão geral
-                        current_state=11
+                        self.recuperacao_de_erro(['>','<','>=','<=','==','!=','&&','||',')',';',','])
                 case 6:
                     if(self.current_token.token in ['>','<','>=','<=','==','!=']):
                         self.get_next_token()
@@ -1285,10 +1296,12 @@ class analisador_sintatico:
                     elif(self.current_token.token == '||'):
                         self.get_next_token()
                         current_state = 0
+                    elif(self.current_token.token == ')'):
+                      #finalizou a recursão da expressão geral
+                      #retorna vai para o estado final e faz o retorno da função
+                      current_state=11
                     else:
-                        # este else inviabiliza o tratamento de erro em expressões gerais
-                        # por enquanto é a opção para finalizar uma expressão geral
-                        current_state=11
+                        self.recuperacao_de_erro(['>','<','>=','<=','==','!=','&&','||',')',';',','])
                 case 7:
                     pass
                 case 11:
@@ -1602,7 +1615,8 @@ class analisador_sintatico:
                     print('programa analisado')
                     print('Erros encontrados')
                     if (self.sintaxe_errors_list != None):
-                        print(self.sintaxe_errors_list)
+                        for error in self.sintaxe_errors_list:
+                            print(error)
                     
                 
 a = analisador_sintatico()
@@ -1614,7 +1628,9 @@ a.proxima_producao()
 
 '''
 while(a.current_token !=None):
-    print('novo escopo')
-    a.funcao_escopo()
+    print('nova expressao geral')
+    a.funcao_formacao_expressao_geral()
     a.get_next_token()
-    '''
+#print(a.sintaxe_errors_list)
+'''
+    
