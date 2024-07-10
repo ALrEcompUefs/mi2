@@ -93,7 +93,7 @@ class analisador_sintatico:
             # se não for vazio então encontrou o token
             end_line =self.current_token.line
 
-        self.sintaxe_errors_list.append(SintaxeMalFormada(start_line,end_line,read_token,expected_type))
+        self.sintaxe_errors_list.append(SintaxeMalFormada(start_line,end_line,read_token,expected_type+expected_token))
 
     def read_tokens(self)->list[Token]:
         ark='entrada.txt'
