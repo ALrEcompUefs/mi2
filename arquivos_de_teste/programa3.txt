@@ -1,0 +1,41 @@
+algoritmo{
+    // exemplo de declaração de funções
+    constantes{
+        real a=1.27;
+        inteiro a=20,B=25,T=2*4/(1+6),TOTAL_ALUNOS=50;
+        booleano fim= verdadeiro || !falso;
+        cadeia msg="ola mundo";
+        char ptr = "T";
+    }   
+    variaveis{
+        inteiro matriz[100][2];
+        cadeia msgs[100];
+        real pi;
+        aluno alunos[50];
+        nota notas1[25],notas2[25];
+    }
+
+    registro aluno{
+        cadeia nome,matricula;
+        inteiro turma,turno;
+        booleano tempo_integral;
+    }
+
+    funcao inteiro soma(inteiro a,inteiro b){
+        soma = a+b;
+        retorno soma;
+    }
+
+    funcao aluno criar_aluno(cadeia nome,cadeia matricula,inteiro turma){
+        variaveis{
+            aluno a;
+        }
+            a.nome = nome
+            a.matricula= matricula
+            a.turma = turma
+        retorno a;
+    }
+    
+    principal(){
+    }
+}
